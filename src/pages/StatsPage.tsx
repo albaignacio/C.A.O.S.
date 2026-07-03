@@ -16,12 +16,13 @@ import type { Match, PlayerSeasonStats } from '../types';
 import { usePlayers } from '../hooks/usePlayers';
 import { Avatar } from '../components/Avatar';
 import { Modal } from '../components/Modal';
-import { LoadingState } from '../components/Spinner';
+import { ListSkeleton, TableSkeleton } from '../components/Skeleton';
 import { ErrorState } from '../components/ErrorState';
 import { EmptyState } from '../components/EmptyState';
 import { formatDate } from '../lib/helpers';
 import { MatchForm } from '../components/stats/MatchForm';
 import { MatchStatsEditor } from '../components/stats/MatchStatsEditor';
+import { toast } from '../components/Toast';
 
 type Tab = 'ranking' | 'partidos';
 
@@ -30,24 +31,20 @@ export function StatsPage() {
   return (
     <div>
       <div className="mb-4">
-        <h2 className="text-2xl font-extrabold text-slate-800">Estadísticas</h2>
+        <h2 className="text-2xl font-bold text-slate-900">Estadísticas</h2>
         <p className="text-sm text-slate-400">Partidos, goles, asistencias y MVPs de la temporada.</p>
       </div>
 
-      <div className="mb-5 grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1">
+      <div className="seg mb-5 grid-cols-2">
         <button
           onClick={() => setTab('ranking')}
-          className={`flex items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-semibold transition-colors ${
-            tab === 'ranking' ? 'bg-white text-celeste-600 shadow-sm' : 'text-slate-500'
-          }`}
+          className={`seg-item ${tab === 'ranking' ? 'seg-item-active' : ''}`}
         >
           <BarChart3 className="h-4 w-4" /> Ranking
         </button>
         <button
           onClick={() => setTab('partidos')}
-          className={`flex items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-semibold transition-colors ${
-            tab === 'partidos' ? 'bg-white text-celeste-600 shadow-sm' : 'text-slate-500'
-          }`}
+          className={`seg-item ${tab === 'partidos' ? 'seg-item-active' : ''}`}
         >
           <ClipboardList className="h-4 w-4" /> Partidos
         </button>
@@ -107,7 +104,7 @@ function RankingTab() {
     }
   }
 
-  if (loading) return <LoadingState label="Cargando ranking…" />;
+  if (loading) return <TableSkeleton />;
   if (error) return <ErrorState message={error} onRetry={load} />;
   if (stats.length === 0) {
     return (
@@ -120,7 +117,7 @@ function RankingTab() {
   }
 
   return (
-    <div className="card overflow-hidden">
+    <div className="card animate-fade-up overflow-hidden">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-slate-100 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-400">
@@ -154,7 +151,7 @@ function RankingTab() {
                   <Avatar nombre={p.nombre} apodo={p.apodo} fotoUrl={p.foto_url} size={34} />
                   <div className="min-w-0">
                     <p className="truncate font-semibold text-slate-700">{p.apodo || p.nombre}</p>
-                    <p className="text-[11px] text-slate-400">{p.partidos_jugados} PJ</p>
+                    <p className="tnum text-[11px] text-slate-400">{p.partidos_jugados} PJ</p>
                   </div>
                 </div>
               </td>
@@ -206,7 +203,9 @@ function SortHeader({
 function StatCell({ value, active }: { value: number; active: boolean }) {
   return (
     <td className="px-2 py-2 text-center">
-      <span className={`font-bold ${active ? 'text-celeste-600' : 'text-slate-700'}`}>{value}</span>
+      <span className={`tnum font-display font-bold ${active ? 'text-celeste-600' : 'text-slate-700'}`}>
+        {value}
+      </span>
     </td>
   );
 }
@@ -250,11 +249,12 @@ function MatchesTab() {
     if (!deleting) return;
     const { error: err } = await supabase.from('matches').delete().eq('id', deleting.id);
     if (err) {
-      alert('No se pudo eliminar el partido.');
+      toast('No se pudo eliminar el partido.', 'error');
       console.error(err);
       return;
     }
     setDeleting(null);
+    toast('Partido eliminado');
     void load();
   }
 
@@ -273,7 +273,7 @@ function MatchesTab() {
       </div>
 
       {loading ? (
-        <LoadingState label="Cargando partidos…" />
+        <ListSkeleton />
       ) : error ? (
         <ErrorState message={error} onRetry={load} />
       ) : matches.length === 0 ? (
@@ -288,9 +288,9 @@ function MatchesTab() {
           }
         />
       ) : (
-        <ul className="space-y-2.5">
+        <ul className="stagger space-y-2.5">
           {matches.map((m) => (
-            <li key={m.id} className="card p-4">
+            <li key={m.id} className="card card-hover p-4">
               <div className="flex items-center gap-3">
                 <ResultBadge gf={m.goles_favor} gc={m.goles_contra} />
                 <div className="min-w-0 flex-1">
@@ -336,6 +336,7 @@ function MatchesTab() {
         onClose={() => setFormOpen(false)}
         onSaved={() => {
           setFormOpen(false);
+          toast('Partido guardado');
           void load();
         }}
       />
@@ -347,6 +348,7 @@ function MatchesTab() {
         onClose={() => setStatsMatch(null)}
         onSaved={() => {
           setStatsMatch(null);
+          toast('Estadísticas guardadas');
           void load();
         }}
       />
@@ -385,9 +387,9 @@ function ResultBadge({ gf, gc }: { gf: number; gc: number }) {
         : 'bg-slate-100 text-slate-500';
   return (
     <div
-      className={`flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl font-black ${style}`}
+      className={`flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl font-display font-bold ${style}`}
     >
-      <span className="text-base leading-none">
+      <span className="tnum text-base leading-none">
         {gf}-{gc}
       </span>
     </div>

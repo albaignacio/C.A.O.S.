@@ -6,10 +6,11 @@ import { usePlayers } from '../hooks/usePlayers';
 import { Avatar } from '../components/Avatar';
 import { PositionBadge } from '../components/PositionBadge';
 import { Modal } from '../components/Modal';
-import { LoadingState } from '../components/Spinner';
+import { PlayerGridSkeleton } from '../components/Skeleton';
 import { ErrorState } from '../components/ErrorState';
 import { EmptyState } from '../components/EmptyState';
 import { PlayerForm } from '../components/players/PlayerForm';
+import { toast } from '../components/Toast';
 
 export function PlayersPage() {
   const { players, loading, error, reload } = usePlayers();
@@ -43,6 +44,7 @@ export function PlayersPage() {
   function handleSaved() {
     setFormOpen(false);
     setEditing(null);
+    toast('Jugador guardado');
     void reload();
   }
 
@@ -59,10 +61,11 @@ export function PlayersPage() {
       if (err) throw err;
       setDeleting(null);
       setFormOpen(false);
+      toast('Jugador eliminado');
       void reload();
     } catch (err) {
       console.error(err);
-      alert('No se pudo eliminar el jugador.');
+      toast('No se pudo eliminar el jugador.', 'error');
     } finally {
       setDeleteBusy(false);
     }
@@ -72,8 +75,8 @@ export function PlayersPage() {
     <div>
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-extrabold text-slate-800">Plantel</h2>
-          <p className="text-sm text-slate-400">
+          <h2 className="text-2xl font-bold text-slate-900">Plantel</h2>
+          <p className="tnum text-sm text-slate-400">
             {players.length} {players.length === 1 ? 'jugador' : 'jugadores'}
           </p>
         </div>
@@ -96,7 +99,7 @@ export function PlayersPage() {
       </div>
 
       {loading ? (
-        <LoadingState label="Cargando plantel…" />
+        <PlayerGridSkeleton />
       ) : error ? (
         <ErrorState message={error} onRetry={reload} />
       ) : players.length === 0 ? (
@@ -115,12 +118,12 @@ export function PlayersPage() {
           No se encontraron jugadores para “{query}”.
         </p>
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="stagger grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {filtered.map((p) => (
             <button
               key={p.id}
               onClick={() => openEdit(p)}
-              className="card group flex flex-col items-center gap-2 p-4 text-center transition-shadow hover:shadow-md"
+              className="card card-hover group flex flex-col items-center gap-2 p-4 text-center"
             >
               <div className="relative">
                 <Avatar nombre={p.nombre} apodo={p.apodo} fotoUrl={p.foto_url} size={64} />

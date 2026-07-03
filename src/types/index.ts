@@ -26,6 +26,9 @@ export interface LineupPosition {
   lineup_id: string;
   slot_index: number;
   player_id: string | null;
+  /** Coordenadas en % (solo formación libre; null en formaciones fijas). */
+  x: number | null;
+  y: number | null;
 }
 
 export interface Match {

@@ -101,6 +101,12 @@ const DEFS: FormationDef[] = [
 /** Índice fijo del puesto de DT (va después de los 11 titulares: 0..10). */
 export const DT_SLOT_INDEX = 11;
 
+/**
+ * Identificador del modo "Formación libre": los jugadores se colocan en
+ * cualquier coordenada de la cancha (x/y en %) en vez de en puestos fijos.
+ */
+export const FREE_FORMATION = 'libre';
+
 function buildSlots(def: FormationDef): Slot[] {
   const slots: Slot[] = [];
   let index = 0;

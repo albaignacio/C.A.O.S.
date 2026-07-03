@@ -16,6 +16,8 @@ interface Props {
   currentPlayerId: string | null;
   onPick: (playerId: string | null) => void;
   onClose: () => void;
+  /** Título alternativo (ej: modo libre, sin puesto fijo). */
+  title?: string;
 }
 
 export function PlayerPicker({
@@ -26,6 +28,7 @@ export function PlayerPicker({
   currentPlayerId,
   onPick,
   onClose,
+  title,
 }: Props) {
   const [query, setQuery] = useState('');
 
@@ -36,9 +39,10 @@ export function PlayerPicker({
         !q || p.nombre.toLowerCase().includes(q) || (p.apodo ?? '').toLowerCase().includes(q),
     );
     // Ordena: primero los de la posición del puesto, después el resto.
+    if (!slot) return filtered;
     return [...filtered].sort((a, b) => {
-      const am = a.posicion === slot?.role ? 0 : 1;
-      const bm = b.posicion === slot?.role ? 0 : 1;
+      const am = a.posicion === slot.role ? 0 : 1;
+      const bm = b.posicion === slot.role ? 0 : 1;
       return am - bm;
     });
   }, [players, query, slot]);
@@ -46,7 +50,7 @@ export function PlayerPicker({
   return (
     <Modal
       open={open}
-      title={slot ? `Asignar puesto · ${POSITION_LABELS[slot.role]}` : 'Asignar puesto'}
+      title={slot ? `Asignar puesto · ${POSITION_LABELS[slot.role]}` : (title ?? 'Agregar jugador')}
       onClose={onClose}
     >
       <div className="relative mb-3">

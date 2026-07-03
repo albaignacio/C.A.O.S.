@@ -11,6 +11,15 @@ body,
 body {
   @apply bg-slate-50 text-slate-800 antialiased;
   -webkit-tap-highlight-color: transparent;
+  font-feature-settings: 'cv02', 'cv03', 'cv04';
+}
+
+/* Los títulos usan la familia display (Space Grotesk) */
+h1,
+h2,
+h3,
+h4 {
+  @apply font-display tracking-tight;
 }
 
 /* Respeta el notch / barra inferior en celulares */
@@ -18,33 +27,90 @@ body {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
+@layer utilities {
+  /* Números tabulares para estadísticas y marcadores */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold
-           transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-celeste-400
-           focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex select-none items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold
+           transition-all duration-200 ease-out-expo focus:outline-none focus-visible:ring-2
+           focus-visible:ring-celeste-400 focus-visible:ring-offset-2 active:scale-[0.97]
+           disabled:pointer-events-none disabled:opacity-50;
   }
   .btn-primary {
-    @apply btn bg-celeste-500 text-white hover:bg-celeste-600 active:bg-celeste-700;
+    @apply btn bg-celeste-500 text-white shadow-glow hover:bg-celeste-600;
   }
   .btn-secondary {
-    @apply btn border border-slate-200 bg-white text-slate-700 hover:bg-slate-50;
+    @apply btn border border-slate-200 bg-white text-slate-700 shadow-card hover:border-slate-300 hover:bg-slate-50;
   }
   .btn-ghost {
-    @apply btn text-slate-600 hover:bg-slate-100;
+    @apply btn text-slate-500 hover:bg-slate-100 hover:text-slate-700;
   }
   .btn-danger {
     @apply btn bg-red-500 text-white hover:bg-red-600;
   }
   .input {
-    @apply w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800
-           placeholder:text-slate-400 focus:border-celeste-400 focus:outline-none
-           focus:ring-2 focus:ring-celeste-100;
+    @apply w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 shadow-card
+           transition-all duration-200 placeholder:text-slate-400 focus:border-celeste-400 focus:outline-none
+           focus:ring-4 focus:ring-celeste-500/10;
   }
   .label {
     @apply mb-1.5 block text-sm font-medium text-slate-600;
   }
   .card {
-    @apply rounded-2xl border border-slate-100 bg-white shadow-card;
+    @apply rounded-2xl border border-slate-200/70 bg-white shadow-card;
+  }
+  .card-hover {
+    @apply transition-all duration-300 ease-out-expo hover:-translate-y-0.5 hover:shadow-lift;
+  }
+  /* Skeleton con brillo animado */
+  .skeleton {
+    @apply relative overflow-hidden rounded-xl bg-slate-200/60;
+  }
+  .skeleton::after {
+    content: '';
+    @apply absolute inset-0 animate-shimmer;
+    background-image: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.75), transparent);
+    background-size: 200% 100%;
+  }
+  /* Tabs segmentadas */
+  .seg {
+    @apply grid gap-1 rounded-2xl bg-slate-200/50 p-1;
+  }
+  .seg-item {
+    @apply flex items-center justify-center gap-1.5 rounded-xl py-2 text-sm font-semibold text-slate-500
+           transition-all duration-200;
+  }
+  .seg-item-active {
+    @apply bg-white text-celeste-700 shadow-card;
   }
 }
+
+/* Entrada escalonada para listas y grillas */
+.stagger > * {
+  @apply animate-fade-up;
+}
+.stagger > *:nth-child(1) { animation-delay: 0ms; }
+.stagger > *:nth-child(2) { animation-delay: 35ms; }
+.stagger > *:nth-child(3) { animation-delay: 70ms; }
+.stagger > *:nth-child(4) { animation-delay: 105ms; }
+.stagger > *:nth-child(5) { animation-delay: 140ms; }
+.stagger > *:nth-child(6) { animation-delay: 175ms; }
+.stagger > *:nth-child(7) { animation-delay: 210ms; }
+.stagger > *:nth-child(8) { animation-delay: 245ms; }
+.stagger > *:nth-child(9) { animation-delay: 280ms; }
+.stagger > *:nth-child(10) { animation-delay: 315ms; }
+.stagger > *:nth-child(11) { animation-delay: 350ms; }
+.stagger > *:nth-child(12) { animation-delay: 385ms; }
+.stagger > *:nth-child(n + 13) { animation-delay: 420ms; }

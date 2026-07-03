@@ -5,7 +5,8 @@ import type { Match, MatchStat, Player } from '../../types';
 import { formatDate } from '../../lib/helpers';
 import { Modal } from '../Modal';
 import { Avatar } from '../Avatar';
-import { LoadingState, Spinner } from '../Spinner';
+import { Spinner } from '../Spinner';
+import { ListSkeleton } from '../Skeleton';
 import { InlineError } from '../ErrorState';
 
 interface Props {
@@ -128,7 +129,7 @@ export function MatchStatsEditor({ open, match, players, onClose, onSaved }: Pro
       }
     >
       {loading ? (
-        <LoadingState label="Cargando…" />
+        <ListSkeleton rows={5} />
       ) : players.length === 0 ? (
         <p className="py-6 text-center text-sm text-slate-400">
           No hay jugadores en el plantel.
@@ -188,7 +189,7 @@ function Stepper({ value, onChange }: { value: number; onChange: (delta: number)
       >
         <Minus className="h-3.5 w-3.5" />
       </button>
-      <span className="w-5 text-center text-sm font-bold text-slate-700">{value}</span>
+      <span className="tnum w-5 text-center text-sm font-bold text-slate-700">{value}</span>
       <button
         onClick={() => onChange(1)}
         className="flex h-6 w-6 items-center justify-center rounded-md text-slate-500 hover:bg-white"

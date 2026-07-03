@@ -31,7 +31,7 @@ export function Modal({ open, title, onClose, children, footer }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
       <div
-        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+        className="absolute inset-0 animate-fade-in bg-slate-900/40 backdrop-blur-sm"
         onClick={onClose}
         aria-hidden
       />
@@ -39,8 +39,8 @@ export function Modal({ open, title, onClose, children, footer }: Props) {
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="relative z-10 flex max-h-[92vh] w-full flex-col rounded-t-3xl bg-white shadow-xl
-                   sm:max-w-lg sm:rounded-3xl"
+        className="relative z-10 flex max-h-[92vh] w-full animate-sheet-up flex-col rounded-t-[1.75rem] bg-white shadow-pop
+                   sm:max-w-lg sm:animate-scale-in sm:rounded-3xl"
       >
         <header className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
           <h2 className="text-lg font-bold text-slate-800">{title}</h2>

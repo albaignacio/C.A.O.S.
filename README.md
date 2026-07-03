@@ -32,6 +32,8 @@ La app es **abierta, sin login**: cualquiera que la abra ve y edita el mismo pla
 3. Debería decir *Success*. Esto crea todas las tablas, la vista de estadísticas, las políticas de seguridad (RLS) y el bucket de fotos.
 4. **New query** de nuevo → corré también [`supabase/open-access.sql`](supabase/open-access.sql). Esto habilita el acceso **sin login** (permite el rol anónimo). **Sin este paso la app no vería ni guardaría datos.**
 
+> **¿Proyecto ya existente?** Si creaste la base antes de que existieran el DT y la formación libre, corré también [`supabase/add-dt.sql`](supabase/add-dt.sql) y [`supabase/add-free-formation.sql`](supabase/add-free-formation.sql) (una vez cada uno; son compatibles hacia atrás).
+
 > Los scripts son idempotentes: los podés correr más de una vez sin romper nada.
 
 ### 1.3 Cargar datos de prueba (opcional pero recomendado)
@@ -160,7 +162,7 @@ C.A.O.S/
 |-------|-------------|
 | `players` | Plantel: nombre, apodo, número, posición, foto. |
 | `lineups` | Alineaciones guardadas: nombre, formación, fecha. |
-| `lineup_positions` | Jugador asignado a cada puesto de una alineación. |
+| `lineup_positions` | Jugador asignado a cada puesto de una alineación. En formación **libre**, guarda además coordenadas `x`/`y` en % de la cancha. |
 | `matches` | Partidos: rival, fecha, goles a favor / en contra. |
 | `match_stats` | Goles, asistencias y MVP por jugador en cada partido. |
 | `player_season_stats` | *(vista)* Acumulado de temporada por jugador. |

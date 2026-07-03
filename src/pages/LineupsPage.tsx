@@ -1,18 +1,41 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Save, Trash2, FolderOpen, Eraser, LayoutGrid, Calendar, Plus } from 'lucide-react';
+import {
+  Save,
+  Trash2,
+  FolderOpen,
+  Eraser,
+  LayoutGrid,
+  Calendar,
+  Plus,
+  Hand,
+  UserPlus,
+} from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Lineup, LineupPosition, Player } from '../types';
 import { usePlayers } from '../hooks/usePlayers';
-import { FORMATION_NAMES, getSlots, type Slot } from '../lib/formations';
+import { FORMATION_NAMES, FREE_FORMATION, getSlots, type Slot } from '../lib/formations';
 import { formatDate, todayISO } from '../lib/helpers';
 import { FormationField } from '../components/lineups/FormationField';
+import {
+  FreeFormationField,
+  type FreePosition,
+} from '../components/lineups/FreeFormationField';
 import { PlayerPicker } from '../components/lineups/PlayerPicker';
 import { Modal } from '../components/Modal';
-import { LoadingState } from '../components/Spinner';
+import { Skeleton, ListSkeleton } from '../components/Skeleton';
 import { ErrorState } from '../components/ErrorState';
 import { EmptyState } from '../components/EmptyState';
+import { toast } from '../components/Toast';
 
 type Tab = 'armar' | 'guardadas';
+
+/** Fila de posición lista para insertar (sin lineup_id). */
+interface PositionRow {
+  slot_index: number;
+  player_id: string;
+  x?: number;
+  y?: number;
+}
 
 export function LineupsPage() {
   const { players, loading: loadingPlayers, error: playersError, reload: reloadPlayers } =
@@ -23,8 +46,10 @@ export function LineupsPage() {
   // --- Estado del armador ---
   const [formacion, setFormacion] = useState<string>(FORMATION_NAMES[0]);
   const [assignments, setAssignments] = useState<Record<number, string>>({});
+  const [freePositions, setFreePositions] = useState<FreePosition[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pickerSlot, setPickerSlot] = useState<Slot | null>(null);
+  const [freePickerOpen, setFreePickerOpen] = useState(false);
   const [saveOpen, setSaveOpen] = useState(false);
 
   // --- Alineaciones guardadas ---
@@ -33,7 +58,9 @@ export function LineupsPage() {
   const [lineupsError, setLineupsError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<Lineup | null>(null);
 
+  const isFree = formacion === FREE_FORMATION;
   const slots = getSlots(formacion);
+
   const playersById = useMemo(
     () => Object.fromEntries(players.map((p) => [p.id, p])) as Record<string, Player>,
     [players],
@@ -47,11 +74,30 @@ export function LineupsPage() {
 
   const takenByPlayer = useMemo(() => {
     const map: Record<string, number> = {};
-    for (const [idx, pid] of Object.entries(assignments)) map[pid] = +idx;
+    if (isFree) {
+      freePositions.forEach((p, i) => (map[p.playerId] = i));
+    } else {
+      for (const [idx, pid] of Object.entries(assignments)) map[pid] = +idx;
+    }
     return map;
-  }, [assignments]);
+  }, [assignments, freePositions, isFree]);
 
-  const assignedCount = Object.keys(assignments).length;
+  /** Filas de posiciones según el modo activo (fijo o libre). */
+  const positionRows: PositionRow[] = useMemo(
+    () =>
+      isFree
+        ? freePositions.map((p, i) => ({
+            slot_index: i,
+            player_id: p.playerId,
+            x: p.x,
+            y: p.y,
+          }))
+        : Object.entries(assignments).map(([idx, pid]) => ({
+            slot_index: +idx,
+            player_id: pid,
+          })),
+    [isFree, freePositions, assignments],
+  );
 
   const loadLineups = useCallback(async () => {
     setLoadingLineups(true);
@@ -74,6 +120,19 @@ export function LineupsPage() {
   }, [loadLineups]);
 
   function changeFormation(f: string) {
+    if (f === FREE_FORMATION) {
+      // Al pasar a libre, se arranca con los jugadores ya asignados en sus puestos.
+      if (freePositions.length === 0 && Object.keys(assignments).length > 0) {
+        const seed: FreePosition[] = [];
+        for (const [idx, pid] of Object.entries(assignments)) {
+          const s = slots.find((sl) => sl.index === +idx);
+          if (s) seed.push({ playerId: pid, x: s.x, y: s.y });
+        }
+        setFreePositions(seed);
+      }
+      setFormacion(f);
+      return;
+    }
     setFormacion(f);
     // Se conservan las asignaciones que sigan teniendo un puesto válido.
     setAssignments((prev) => {
@@ -99,8 +158,29 @@ export function LineupsPage() {
     setPickerSlot(null);
   }
 
+  // --- Modo libre ---
+  function addFreePlayer(playerId: string) {
+    setFreePositions((prev) => {
+      // Entra cerca del centro, con un pequeño corrimiento para no encimarse.
+      const n = prev.length;
+      const x = 30 + (n % 3) * 20;
+      const y = 40 + (Math.floor(n / 3) % 4) * 12;
+      return [...prev, { playerId, x, y }];
+    });
+    setFreePickerOpen(false);
+  }
+
+  function moveFreePlayer(playerId: string, x: number, y: number) {
+    setFreePositions((prev) => prev.map((p) => (p.playerId === playerId ? { ...p, x, y } : p)));
+  }
+
+  function removeFreePlayer(playerId: string) {
+    setFreePositions((prev) => prev.filter((p) => p.playerId !== playerId));
+  }
+
   function resetBuilder() {
     setAssignments({});
+    setFreePositions([]);
     setEditingId(null);
     setFormacion(FORMATION_NAMES[0]);
   }
@@ -111,16 +191,29 @@ export function LineupsPage() {
       .select('*')
       .eq('lineup_id', l.id);
     if (error) {
-      alert('No se pudo abrir la alineación.');
+      toast('No se pudo abrir la alineación.', 'error');
       console.error(error);
       return;
     }
-    const next: Record<number, string> = {};
-    for (const pos of (data ?? []) as LineupPosition[]) {
-      if (pos.player_id) next[pos.slot_index] = pos.player_id;
+    const rows = (data ?? []) as LineupPosition[];
+    if (l.formacion === FREE_FORMATION) {
+      setFreePositions(
+        rows
+          .filter((r) => r.player_id)
+          .map((r) => ({
+            playerId: r.player_id!,
+            x: Number(r.x ?? 50),
+            y: Number(r.y ?? 50),
+          })),
+      );
+      setAssignments({});
+    } else {
+      const next: Record<number, string> = {};
+      for (const pos of rows) if (pos.player_id) next[pos.slot_index] = pos.player_id;
+      setAssignments(next);
+      setFreePositions([]);
     }
     setFormacion(l.formacion);
-    setAssignments(next);
     setEditingId(l.id);
     setTab('armar');
   }
@@ -129,40 +222,50 @@ export function LineupsPage() {
     if (!deleting) return;
     const { error } = await supabase.from('lineups').delete().eq('id', deleting.id);
     if (error) {
-      alert('No se pudo eliminar la alineación.');
+      toast('No se pudo eliminar la alineación.', 'error');
       console.error(error);
       return;
     }
     if (editingId === deleting.id) resetBuilder();
     setDeleting(null);
+    toast('Alineación eliminada');
     void loadLineups();
   }
 
-  if (loadingPlayers) return <LoadingState label="Cargando…" />;
+  if (loadingPlayers) {
+    return (
+      <div>
+        <PageHeader />
+        <div className="mx-auto w-full max-w-md pt-2">
+          <Skeleton className="aspect-[2/3] w-full rounded-[1.5rem]" />
+        </div>
+      </div>
+    );
+  }
   if (playersError) return <ErrorState message={playersError} onRetry={reloadPlayers} />;
+
+  const formationChip = (active: boolean) =>
+    `flex shrink-0 items-center gap-1.5 rounded-xl px-4 py-2 font-display text-sm font-bold transition-all duration-200 ease-out-expo ${
+      active
+        ? 'bg-celeste-500 text-white shadow-glow'
+        : 'border border-slate-200 bg-white text-slate-600 shadow-card hover:border-slate-300 hover:bg-slate-50'
+    }`;
 
   return (
     <div>
-      <div className="mb-4">
-        <h2 className="text-2xl font-extrabold text-slate-800">Formaciones</h2>
-        <p className="text-sm text-slate-400">Armá la alineación y guardala para reutilizarla.</p>
-      </div>
+      <PageHeader />
 
       {/* Tabs */}
-      <div className="mb-5 grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1">
+      <div className="seg mb-5 grid-cols-2">
         <button
           onClick={() => setTab('armar')}
-          className={`rounded-lg py-2 text-sm font-semibold transition-colors ${
-            tab === 'armar' ? 'bg-white text-celeste-600 shadow-sm' : 'text-slate-500'
-          }`}
+          className={`seg-item ${tab === 'armar' ? 'seg-item-active' : ''}`}
         >
           Armar
         </button>
         <button
           onClick={() => setTab('guardadas')}
-          className={`rounded-lg py-2 text-sm font-semibold transition-colors ${
-            tab === 'guardadas' ? 'bg-white text-celeste-600 shadow-sm' : 'text-slate-500'
-          }`}
+          className={`seg-item ${tab === 'guardadas' ? 'seg-item-active' : ''}`}
         >
           Guardadas ({lineups.length})
         </button>
@@ -177,7 +280,7 @@ export function LineupsPage() {
           )}
 
           {editingId && (
-            <div className="flex items-center justify-between rounded-xl bg-celeste-50 px-4 py-2.5 text-sm text-celeste-700">
+            <div className="flex animate-fade-in items-center justify-between rounded-xl bg-celeste-50 px-4 py-2.5 text-sm text-celeste-700">
               <span>Editando una alineación guardada.</span>
               <button onClick={resetBuilder} className="font-semibold underline">
                 Nueva
@@ -188,41 +291,62 @@ export function LineupsPage() {
           {/* Selector de formación */}
           <div>
             <p className="label">Formación</p>
-            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+            <div className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
               {FORMATION_NAMES.map((f) => (
-                <button
-                  key={f}
-                  onClick={() => changeFormation(f)}
-                  className={`shrink-0 rounded-xl px-4 py-2 text-sm font-bold transition-colors ${
-                    formacion === f
-                      ? 'bg-celeste-500 text-white shadow'
-                      : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
+                <button key={f} onClick={() => changeFormation(f)} className={formationChip(formacion === f)}>
                   {f}
                 </button>
               ))}
+              <button
+                onClick={() => changeFormation(FREE_FORMATION)}
+                className={formationChip(isFree)}
+                title="Ubicá a cada jugador donde quieras"
+              >
+                <Hand className="h-4 w-4" />
+                Libre
+              </button>
             </div>
           </div>
 
-          <FormationField
-            slots={slots}
-            assignments={assignmentsWithPlayer}
-            onSlotClick={(s) => players.length > 0 && setPickerSlot(s)}
-          />
+          {isFree ? (
+            <FreeFormationField
+              positions={freePositions}
+              playersById={playersById}
+              onMove={moveFreePlayer}
+              onRemove={removeFreePlayer}
+            />
+          ) : (
+            <FormationField
+              slots={slots}
+              assignments={assignmentsWithPlayer}
+              onSlotClick={(s) => players.length > 0 && setPickerSlot(s)}
+            />
+          )}
 
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-slate-400">
-              {assignedCount}/{slots.length} puestos asignados
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="tnum text-sm text-slate-400">
+              {isFree
+                ? `${freePositions.length} ${freePositions.length === 1 ? 'jugador' : 'jugadores'} en cancha`
+                : `${positionRows.length}/${slots.length} puestos asignados`}
             </p>
             <div className="flex gap-2">
-              <button onClick={resetBuilder} className="btn-secondary" title="Limpiar">
+              {isFree && (
+                <button
+                  onClick={() => setFreePickerOpen(true)}
+                  disabled={players.length === 0 || freePositions.length >= players.length}
+                  className="btn-secondary"
+                >
+                  <UserPlus className="h-4 w-4" />
+                  Agregar
+                </button>
+              )}
+              <button onClick={resetBuilder} className="btn-ghost" title="Limpiar">
                 <Eraser className="h-4 w-4" />
                 <span className="hidden sm:inline">Limpiar</span>
               </button>
               <button
                 onClick={() => setSaveOpen(true)}
-                disabled={assignedCount === 0}
+                disabled={positionRows.length === 0}
                 className="btn-primary"
               >
                 <Save className="h-4 w-4" />
@@ -243,7 +367,7 @@ export function LineupsPage() {
         />
       )}
 
-      {/* Picker de jugador */}
+      {/* Picker para puestos fijos */}
       <PlayerPicker
         open={!!pickerSlot}
         slot={pickerSlot}
@@ -254,17 +378,30 @@ export function LineupsPage() {
         onClose={() => setPickerSlot(null)}
       />
 
+      {/* Picker para agregar en modo libre */}
+      <PlayerPicker
+        open={freePickerOpen}
+        slot={null}
+        title="Agregar a la cancha"
+        players={players}
+        takenByPlayer={takenByPlayer}
+        currentPlayerId={null}
+        onPick={(pid) => pid && addFreePlayer(pid)}
+        onClose={() => setFreePickerOpen(false)}
+      />
+
       {/* Guardar alineación */}
       <SaveLineupModal
         open={saveOpen}
         editingId={editingId}
         formacion={formacion}
-        assignments={assignments}
+        rows={positionRows}
         existing={lineups.find((l) => l.id === editingId) ?? null}
         onClose={() => setSaveOpen(false)}
         onSaved={(id) => {
           setSaveOpen(false);
           setEditingId(id);
+          toast('Alineación guardada');
           void loadLineups();
         }}
       />
@@ -293,6 +430,17 @@ export function LineupsPage() {
   );
 }
 
+function PageHeader() {
+  return (
+    <div className="mb-4">
+      <h2 className="text-2xl font-bold text-slate-900">Formaciones</h2>
+      <p className="text-sm text-slate-400">
+        Elegí un esquema o armá una formación libre, y guardala para reutilizarla.
+      </p>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Lista de alineaciones guardadas
 // ---------------------------------------------------------------------------
@@ -313,7 +461,7 @@ function SavedLineups({
   onDelete: (l: Lineup) => void;
   onGoBuild: () => void;
 }) {
-  if (loading) return <LoadingState label="Cargando alineaciones…" />;
+  if (loading) return <ListSkeleton rows={3} />;
   if (error) return <ErrorState message={error} onRetry={onRetry} />;
   if (lineups.length === 0) {
     return (
@@ -331,31 +479,40 @@ function SavedLineups({
   }
 
   return (
-    <ul className="space-y-2.5">
-      {lineups.map((l) => (
-        <li key={l.id} className="card flex items-center gap-3 p-4">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-celeste-50 text-sm font-black text-celeste-600">
-            {l.formacion}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate font-semibold text-slate-800">{l.nombre}</p>
-            <p className="flex items-center gap-1 text-xs text-slate-400">
-              <Calendar className="h-3 w-3" /> {formatDate(l.fecha)}
-            </p>
-          </div>
-          <button onClick={() => onOpen(l)} className="btn-secondary" title="Abrir">
-            <FolderOpen className="h-4 w-4" />
-            <span className="hidden sm:inline">Abrir</span>
-          </button>
-          <button
-            onClick={() => onDelete(l)}
-            className="btn-ghost text-red-500 hover:bg-red-50"
-            title="Eliminar"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </li>
-      ))}
+    <ul className="stagger space-y-2.5">
+      {lineups.map((l) => {
+        const esLibre = l.formacion === FREE_FORMATION;
+        return (
+          <li key={l.id} className="card card-hover flex items-center gap-3 p-4">
+            <div
+              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-display font-bold ${
+                esLibre
+                  ? 'bg-slate-900 text-amber-300 text-[10px] uppercase tracking-wide'
+                  : 'bg-celeste-50 text-sm text-celeste-600'
+              }`}
+            >
+              {esLibre ? 'Libre' : l.formacion}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-semibold text-slate-800">{l.nombre}</p>
+              <p className="flex items-center gap-1 text-xs text-slate-400">
+                <Calendar className="h-3 w-3" /> {formatDate(l.fecha)}
+              </p>
+            </div>
+            <button onClick={() => onOpen(l)} className="btn-secondary" title="Abrir">
+              <FolderOpen className="h-4 w-4" />
+              <span className="hidden sm:inline">Abrir</span>
+            </button>
+            <button
+              onClick={() => onDelete(l)}
+              className="btn-ghost text-red-500 hover:bg-red-50"
+              title="Eliminar"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -367,7 +524,7 @@ function SaveLineupModal({
   open,
   editingId,
   formacion,
-  assignments,
+  rows,
   existing,
   onClose,
   onSaved,
@@ -375,7 +532,7 @@ function SaveLineupModal({
   open: boolean;
   editingId: string | null;
   formacion: string;
-  assignments: Record<number, string>;
+  rows: PositionRow[];
   existing: Lineup | null;
   onClose: () => void;
   onSaved: (id: string) => void;
@@ -426,13 +583,10 @@ function SaveLineupModal({
         lineupId = data.id;
       }
 
-      const rows = Object.entries(assignments).map(([idx, pid]) => ({
-        lineup_id: lineupId,
-        slot_index: Number(idx),
-        player_id: pid,
-      }));
       if (rows.length > 0) {
-        const { error: posErr } = await supabase.from('lineup_positions').insert(rows);
+        const { error: posErr } = await supabase
+          .from('lineup_positions')
+          .insert(rows.map((r) => ({ ...r, lineup_id: lineupId })));
         if (posErr) throw posErr;
       }
 
@@ -487,8 +641,11 @@ function SaveLineupModal({
           />
         </div>
         <p className="text-xs text-slate-400">
-          Formación <span className="font-semibold text-slate-600">{formacion}</span> ·{' '}
-          {Object.keys(assignments).length} jugadores asignados
+          Formación{' '}
+          <span className="font-semibold text-slate-600">
+            {formacion === FREE_FORMATION ? 'Libre' : formacion}
+          </span>{' '}
+          · <span className="tnum">{rows.length}</span> jugadores asignados
         </p>
         {error && <p className="text-sm text-red-600">{error}</p>}
       </div>

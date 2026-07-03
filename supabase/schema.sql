@@ -38,8 +38,15 @@ create table if not exists public.lineup_positions (
   lineup_id  uuid not null references public.lineups(id) on delete cascade,
   slot_index int not null,                -- índice del puesto dentro de la formación (0..10)
   player_id  uuid references public.players(id) on delete set null,
+  x          double precision,            -- coordenadas en % (solo formación "libre")
+  y          double precision,
   unique (lineup_id, slot_index)
 );
+
+-- Para instalaciones anteriores a la formación libre (idempotente)
+alter table public.lineup_positions
+  add column if not exists x double precision,
+  add column if not exists y double precision;
 
 -- Un jugador no puede ocupar dos puestos en la misma alineación
 create unique index if not exists lineup_positions_unique_player
