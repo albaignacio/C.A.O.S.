@@ -14,9 +14,11 @@ export function Layout() {
       <header className="sticky top-0 z-30 bg-celeste-500 text-white shadow-md">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/20 text-lg font-black tracking-tight">
-              ⚽
-            </div>
+            <img
+              src="/logo.png"
+              alt="Escudo C.A.O.S"
+              className="h-10 w-10 object-contain drop-shadow"
+            />
             <div className="leading-tight">
               <h1 className="text-xl font-extrabold tracking-wide">C.A.O.S</h1>
               <p className="text-[11px] font-medium text-celeste-100">Gestión del equipo</p>
