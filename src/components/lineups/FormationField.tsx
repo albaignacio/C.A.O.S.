@@ -37,6 +37,12 @@ export function FormationField({ slots, assignments, onSlotClick }: Props) {
         {/* Puestos */}
         {slots.map((slot) => {
           const player = assignments[slot.index];
+          const isDt = slot.role === 'dt';
+          const chipClass = isDt
+            ? 'bg-slate-900 text-amber-300 ring-amber-400'
+            : player
+              ? 'bg-white text-celeste-700 ring-celeste-500'
+              : 'bg-white/25 text-white ring-white/70 backdrop-blur-sm';
           return (
             <button
               key={slot.index}
@@ -45,11 +51,7 @@ export function FormationField({ slots, assignments, onSlotClick }: Props) {
               className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center focus:outline-none"
             >
               <span
-                className={`flex h-11 w-11 items-center justify-center rounded-full text-sm font-bold shadow-md ring-2 transition-transform active:scale-95 ${
-                  player
-                    ? 'bg-white text-celeste-700 ring-celeste-500'
-                    : 'bg-white/25 text-white ring-white/70 backdrop-blur-sm'
-                }`}
+                className={`flex h-11 w-11 items-center justify-center rounded-full text-sm font-bold shadow-md ring-2 transition-transform active:scale-95 ${chipClass}`}
               >
                 {player ? (
                   player.foto_url ? (
@@ -66,7 +68,7 @@ export function FormationField({ slots, assignments, onSlotClick }: Props) {
                 )}
               </span>
               <span className="mt-1 max-w-[72px] truncate rounded bg-black/30 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                {player ? player.apodo || player.nombre.split(' ')[0] : 'Vacío'}
+                {player ? player.apodo || player.nombre.split(' ')[0] : isDt ? 'DT' : 'Vacío'}
               </span>
             </button>
           );

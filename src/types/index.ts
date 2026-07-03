@@ -1,4 +1,4 @@
-export type Position = 'arquero' | 'defensor' | 'mediocampista' | 'delantero';
+export type Position = 'arquero' | 'defensor' | 'mediocampista' | 'delantero' | 'dt';
 
 export interface Player {
   id: string;

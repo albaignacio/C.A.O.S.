@@ -98,6 +98,9 @@ const DEFS: FormationDef[] = [
   },
 ];
 
+/** Índice fijo del puesto de DT (va después de los 11 titulares: 0..10). */
+export const DT_SLOT_INDEX = 11;
+
 function buildSlots(def: FormationDef): Slot[] {
   const slots: Slot[] = [];
   let index = 0;
@@ -106,6 +109,8 @@ function buildSlots(def: FormationDef): Slot[] {
       slots.push({ index: index++, x, y: line.y, role: line.role });
     }
   }
+  // DT: al costado de la cancha (esquina inferior izquierda, tipo banco).
+  slots.push({ index: DT_SLOT_INDEX, x: 12, y: 95, role: 'dt' });
   return slots;
 }
 

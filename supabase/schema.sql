@@ -18,7 +18,7 @@ create table if not exists public.players (
   apodo      text,
   numero     int,
   posicion   text not null default 'mediocampista'
-             check (posicion in ('arquero', 'defensor', 'mediocampista', 'delantero')),
+             check (posicion in ('arquero', 'defensor', 'mediocampista', 'delantero', 'dt')),
   foto_url   text,
   created_at timestamptz not null default now()
 );

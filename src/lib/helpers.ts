@@ -14,6 +14,7 @@ export const POSITION_LABELS: Record<Position, string> = {
   defensor: 'Defensor',
   mediocampista: 'Mediocampista',
   delantero: 'Delantero',
+  dt: 'Director Técnico',
 };
 
 export const POSITION_SHORT: Record<Position, string> = {
@@ -21,6 +22,7 @@ export const POSITION_SHORT: Record<Position, string> = {
   defensor: 'DEF',
   mediocampista: 'MED',
   delantero: 'DEL',
+  dt: 'DT',
 };
 
 /** Clases de color (fondo + texto) para el badge de cada posición. */
@@ -29,9 +31,16 @@ export const POSITION_COLORS: Record<Position, string> = {
   defensor: 'bg-blue-100 text-blue-700',
   mediocampista: 'bg-emerald-100 text-emerald-700',
   delantero: 'bg-rose-100 text-rose-700',
+  dt: 'bg-slate-800 text-amber-300',
 };
 
-export const POSITIONS: Position[] = ['arquero', 'defensor', 'mediocampista', 'delantero'];
+export const POSITIONS: Position[] = [
+  'arquero',
+  'defensor',
+  'mediocampista',
+  'delantero',
+  'dt',
+];
 
 /** Formatea una fecha ISO (yyyy-mm-dd) a dd/mm/yyyy. */
 export function formatDate(iso: string | null): string {
