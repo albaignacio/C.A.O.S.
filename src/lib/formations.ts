@@ -116,7 +116,7 @@ function buildSlots(def: FormationDef): Slot[] {
     }
   }
   // DT: al costado de la cancha (esquina inferior izquierda, tipo banco).
-  slots.push({ index: DT_SLOT_INDEX, x: 12, y: 95, role: 'dt' });
+  slots.push({ index: DT_SLOT_INDEX, x: 12, y: 88, role: 'dt' });
   return slots;
 }
 
