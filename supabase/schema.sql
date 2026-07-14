@@ -27,9 +27,21 @@ create table if not exists public.players (
 create table if not exists public.lineups (
   id         uuid primary key default gen_random_uuid(),
   nombre     text not null,
-  formacion  text not null,               -- ej: '4-3-3'
+  formacion  text not null,               -- ej: '4-3-3' o 'libre'
   fecha      date,
+  notas      text,                        -- consignas del DT (modo presentación)
   created_at timestamptz not null default now()
+);
+
+alter table public.lineups add column if not exists notas text;
+
+-- Pizarras tácticas (posiciones de fichas + dibujos del DT)
+create table if not exists public.boards (
+  id         uuid primary key default gen_random_uuid(),
+  nombre     text not null,
+  data       jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
 -- Posiciones de cada alineación (un jugador por slot de la formación)
@@ -111,18 +123,21 @@ alter table public.lineups          enable row level security;
 alter table public.lineup_positions enable row level security;
 alter table public.matches          enable row level security;
 alter table public.match_stats      enable row level security;
+alter table public.boards           enable row level security;
 
 drop policy if exists "players_all"          on public.players;
 drop policy if exists "lineups_all"          on public.lineups;
 drop policy if exists "lineup_positions_all" on public.lineup_positions;
 drop policy if exists "matches_all"          on public.matches;
 drop policy if exists "match_stats_all"      on public.match_stats;
+drop policy if exists "boards_all"           on public.boards;
 
 create policy "players_all"          on public.players          for all to anon, authenticated using (true) with check (true);
 create policy "lineups_all"          on public.lineups          for all to anon, authenticated using (true) with check (true);
 create policy "lineup_positions_all" on public.lineup_positions for all to anon, authenticated using (true) with check (true);
 create policy "matches_all"          on public.matches          for all to anon, authenticated using (true) with check (true);
 create policy "match_stats_all"      on public.match_stats      for all to anon, authenticated using (true) with check (true);
+create policy "boards_all"           on public.boards           for all to anon, authenticated using (true) with check (true);
 
 -- ----------------------------------------------------------------------------
 -- STORAGE: bucket público para las fotos de los jugadores

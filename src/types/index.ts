@@ -18,7 +18,36 @@ export interface Lineup {
   nombre: string;
   formacion: string;
   fecha: string | null;
+  /** Consignas del DT (modo presentación). */
+  notas: string | null;
   created_at: string;
+}
+
+/** Ficha sobre la pizarra táctica (coordenadas en % de la cancha). */
+export interface BoardToken {
+  playerId: string;
+  x: number;
+  y: number;
+}
+
+/** Trazo dibujado sobre la pizarra. */
+export interface BoardStroke {
+  kind: 'arrow' | 'pass' | 'press';
+  color: string;
+  points: { x: number; y: number }[];
+}
+
+export interface BoardData {
+  tokens: BoardToken[];
+  strokes: BoardStroke[];
+}
+
+export interface Board {
+  id: string;
+  nombre: string;
+  data: BoardData;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface LineupPosition {

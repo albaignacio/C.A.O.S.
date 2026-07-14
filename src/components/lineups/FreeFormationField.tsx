@@ -44,7 +44,11 @@ export function FreeFormationField({ positions, playersById, onMove, onRemove }:
 
   function handleDown(e: React.PointerEvent, pos: FreePosition) {
     e.preventDefault();
-    e.currentTarget.setPointerCapture(e.pointerId);
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      /* continuar sin captura */
+    }
     start.current = { x: e.clientX, y: e.clientY };
     moved.current = false;
     setDrag(pos);

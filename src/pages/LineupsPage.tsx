@@ -9,6 +9,8 @@ import {
   Plus,
   Hand,
   UserPlus,
+  Share2,
+  MonitorPlay,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Lineup, LineupPosition, Player } from '../types';
@@ -21,6 +23,8 @@ import {
   type FreePosition,
 } from '../components/lineups/FreeFormationField';
 import { PlayerPicker } from '../components/lineups/PlayerPicker';
+import { PresentationMode } from '../components/lineups/PresentationMode';
+import { ShareLineupModal } from '../components/lineups/ShareLineupModal';
 import { Modal } from '../components/Modal';
 import { Skeleton, ListSkeleton } from '../components/Skeleton';
 import { ErrorState } from '../components/ErrorState';
@@ -51,6 +55,10 @@ export function LineupsPage() {
   const [pickerSlot, setPickerSlot] = useState<Slot | null>(null);
   const [freePickerOpen, setFreePickerOpen] = useState(false);
   const [saveOpen, setSaveOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [presentOpen, setPresentOpen] = useState(false);
+  const [presentRival, setPresentRival] = useState('');
+  const [notas, setNotas] = useState('');
 
   // --- Alineaciones guardadas ---
   const [lineups, setLineups] = useState<Lineup[]>([]);
@@ -81,6 +89,19 @@ export function LineupsPage() {
     }
     return map;
   }, [assignments, freePositions, isFree]);
+
+  /** Fichas resueltas (x/y + jugador) del armado actual: para estampa y presentación. */
+  const fieldTokens = useMemo(() => {
+    if (isFree) {
+      return freePositions
+        .map((p) => ({ x: p.x, y: p.y, player: playersById[p.playerId] }))
+        .filter((t): t is { x: number; y: number; player: Player } => !!t.player);
+    }
+    return slots
+      .filter((s) => assignments[s.index])
+      .map((s) => ({ x: s.x, y: s.y, player: playersById[assignments[s.index]] }))
+      .filter((t): t is { x: number; y: number; player: Player } => !!t.player);
+  }, [isFree, freePositions, assignments, slots, playersById]);
 
   /** Filas de posiciones según el modo activo (fijo o libre). */
   const positionRows: PositionRow[] = useMemo(
@@ -183,6 +204,8 @@ export function LineupsPage() {
     setFreePositions([]);
     setEditingId(null);
     setFormacion(FORMATION_NAMES[0]);
+    setNotas('');
+    setPresentRival('');
   }
 
   async function openLineup(l: Lineup) {
@@ -215,7 +238,22 @@ export function LineupsPage() {
     }
     setFormacion(l.formacion);
     setEditingId(l.id);
+    setNotas(l.notas ?? '');
     setTab('armar');
+  }
+
+  /** Al salir de la presentación, persiste las consignas si hay alineación guardada. */
+  function closePresentation() {
+    setPresentOpen(false);
+    if (editingId) {
+      void supabase
+        .from('lineups')
+        .update({ notas: notas || null })
+        .eq('id', editingId)
+        .then(({ error }) => {
+          if (error) console.error(error);
+        });
+    }
   }
 
   async function deleteLineup() {
@@ -340,6 +378,24 @@ export function LineupsPage() {
                   Agregar
                 </button>
               )}
+              <button
+                onClick={() => setShareOpen(true)}
+                disabled={fieldTokens.length === 0}
+                className="btn-secondary"
+                title="Estampa del once (imagen para compartir)"
+              >
+                <Share2 className="h-4 w-4" />
+                <span className="hidden sm:inline">Estampa</span>
+              </button>
+              <button
+                onClick={() => setPresentOpen(true)}
+                disabled={fieldTokens.length === 0}
+                className="btn-secondary"
+                title="Modo presentación (pantalla completa)"
+              >
+                <MonitorPlay className="h-4 w-4" />
+                <span className="hidden sm:inline">Presentar</span>
+              </button>
               <button onClick={resetBuilder} className="btn-ghost" title="Limpiar">
                 <Eraser className="h-4 w-4" />
                 <span className="hidden sm:inline">Limpiar</span>
@@ -404,6 +460,31 @@ export function LineupsPage() {
           toast('Alineación guardada');
           void loadLineups();
         }}
+      />
+
+      {/* Estampa del once para compartir */}
+      <ShareLineupModal
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        tokens={fieldTokens}
+        defaultFecha={lineups.find((l) => l.id === editingId)?.fecha ?? null}
+      />
+
+      {/* Modo presentación / TV */}
+      <PresentationMode
+        open={presentOpen}
+        onClose={closePresentation}
+        tokens={fieldTokens}
+        formacionLabel={isFree ? 'Libre' : formacion}
+        rival={presentRival}
+        onRivalChange={setPresentRival}
+        fecha={
+          editingId
+            ? formatDate(lineups.find((l) => l.id === editingId)?.fecha ?? null)
+            : null
+        }
+        notas={notas}
+        onNotasChange={setNotas}
       />
 
       {/* Confirmar borrado de alineación */}
